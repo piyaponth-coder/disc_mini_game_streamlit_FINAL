@@ -225,52 +225,62 @@ for k in CONTEXTS.keys():
     st.session_state.setdefault(f"{k}_g", 1)
 
 def show_context(ctx_name, label):
+    TOTAL_GROUPS = 12
+
     st.subheader(label)
     groups = st.session_state.questions[ctx_name]
-    answered = sum(1 for (c,_) in st.session_state.answers if c==ctx_name)
-    st.progress(answered/len(groups))
-    st.caption(f"{answered}/{len(groups)}")
+    gnum_key = f"{ctx_name}_g"
+    gnum = st.session_state[gnum_key]  # 1..12
 
-    # quick jump grid
-    cols = st.columns(12)
-    for i in range(12):
-        if cols[i].button(str(i+1), key=f"{ctx_name}_jump_{i}"):
-            st.session_state[f"{ctx_name}_g"] = i+1
-            st.rerun()
+    answered = sum(1 for (c,_) in st.session_state.answers if c == ctx_name)
+    st.progress(answered / TOTAL_GROUPS)
+    st.caption(f"{answered}/{TOTAL_GROUPS}")
 
-    gnum = st.session_state[f"{ctx_name}_g"]
-    idx = gnum-1
+    idx = gnum - 1
     opts = groups[idx]
-    # Show choices with language
+
     def fmt(opt):
-        return opt[0] if lang=="EN" else opt[2]
-    st.write("**Pick one _Most (M)_ and one _Least (L)_**" if lang=="EN" else "**เลือก _มากที่สุด (M)_ และ _น้อยที่สุด (L)_ อย่างละ 1**")
-    for i,opt in enumerate(opts):
+        return opt[0] if lang == "EN" else opt[2]
+
+    st.markdown("**Pick one _Most (M)_ and one _Least (L)_**" if lang=="EN"
+                else "**เลือก _มากที่สุด (M)_ และ _น้อยที่สุด (L)_ อย่างละ 1**")
+
+    for i, opt in enumerate(opts):
         st.write(f"{i+1}. {fmt(opt)}")
 
     key = (ctx_name, idx)
-    prev = st.session_state.answers.get(key, {"M":0,"L":1})
+    prev = st.session_state.answers.get(key, None)
+
+    m_default = 0 if prev is None else prev["M"]
     m_sel = st.radio("Most (M)" if lang=="EN" else "มากที่สุด (M)",
-                     list(range(4)), index=prev.get("M",0),
-                     format_func=lambda i: f"Option {i+1}", key=f"{ctx_name}_M_{idx}")
-    l_candidates = [i for i in range(4) if i!=m_sel]
-    l_default = prev.get("L", l_candidates[0])
-    if l_default == m_sel or l_default not in l_candidates:
-        l_default = l_candidates[0]
-    l_idx = l_candidates.index(l_default)
+                     list(range(4)),
+                     index=m_default,
+                     format_func=lambda i: f"Option {i+1}",
+                     key=f"{ctx_name}_M_{idx}")
+
+    l_candidates = [i for i in range(4) if i != m_sel]
+    l_default = (l_candidates[0] if prev is None or prev["L"] == m_sel or prev["L"] not in l_candidates
+                 else prev["L"])
+    l_index = l_candidates.index(l_default)
     l_sel = st.radio("Least (L)" if lang=="EN" else "น้อยที่สุด (L)",
-                     l_candidates, index=l_idx,
-                     format_func=lambda i: f"Option {i+1}", key=f"{ctx_name}_L_{idx}")
-    st.session_state.answers[key] = {"M":m_sel,"L":l_sel}
+                     l_candidates,
+                     index=l_index,
+                     format_func=lambda i: f"Option {i+1}",
+                     key=f"{ctx_name}_L_{idx}")
+
+    st.session_state.answers[key] = {"M": m_sel, "L": l_sel}
     st.caption("Auto-saved ✅" if lang=="EN" else "บันทึกอัตโนมัติแล้ว ✅")
 
-    c1,c2 = st.columns(2)
-    if c1.button("⟵ Prev", key=f"{ctx_name}_prev_{idx}"):
-        if gnum>1:
-            st.session_state[f"{ctx_name}_g"] -= 1; st.rerun()
+    c1, c2 = st.columns(2)
+    if c1.button("⟵ Prev", key=f"{ctx_name}_prev_{idx}") and gnum > 1:
+        st.session_state[gnum_key] -= 1
+        st.rerun()
+
     if c2.button("Next ⟶", key=f"{ctx_name}_next_{idx}"):
-        if gnum<12:
-            st.session_state[f"{ctx_name}_g"] += 1; st.rerun()
+        if gnum < TOTAL_GROUPS:
+            st.session_state[gnum_key] += 1
+            st.rerun()
+
 
 def compute_scores():
     nets = {ctx: {"D":0,"I":0,"S":0,"C":0} for ctx in CONTEXTS}

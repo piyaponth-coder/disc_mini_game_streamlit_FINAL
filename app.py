@@ -265,10 +265,10 @@ def show_context(ctx_name, label):
     st.caption("Auto-saved ✅" if lang=="EN" else "บันทึกอัตโนมัติแล้ว ✅")
 
     c1,c2 = st.columns(2)
-    if c1.button("⟵ Prev"):
+    if c1.button("⟵ Prev", key=f"{ctx_name}_prev_{idx}"):
         if gnum>1:
             st.session_state[f"{ctx_name}_g"] -= 1; st.rerun()
-    if c2.button("Next ⟶"):
+    if c2.button("Next ⟶", key=f"{ctx_name}_next_{idx}"):
         if gnum<12:
             st.session_state[f"{ctx_name}_g"] += 1; st.rerun()
 
